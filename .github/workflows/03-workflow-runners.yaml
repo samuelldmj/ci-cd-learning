@@ -6,7 +6,14 @@ jobs:
   ubuntu-echo:
     runs-on: ubuntu-latest
     steps:
-      - name: Show 05
+      - name: Show OS
         run: |
           echo "This job is running on an ubuntu runner."
           echo "Runner OS: $RUNNER_OS"
+  windows-echo:
+      runs-on: window-latest
+      steps:
+          - name: Show OS
+            run : |
+               echo "This job is running on an windows runner."
+               echo "Runner OS: $RUNNER_OS"
