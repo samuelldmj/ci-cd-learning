@@ -1,0 +1,14 @@
+name: Event Activity Types
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "running whenever a PR is closed and the base branch is master"
