@@ -31,5 +31,5 @@ jobs:
               env:
                   OVERWRITTEN: "I have been overwritten at the stop level"
               run: |
-                  echo step one env: Step env var $STEP_VAR"
+                  echo "step one env: Step env var $STEP_VAR"
                   echo "step two env: ${{env.OVERWRITTEN}}"
