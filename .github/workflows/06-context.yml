@@ -9,11 +9,21 @@ on:
                 type: boolean
                 default: false
 
+env:
+    MY_WORKFLOW_ENV: "workflow level"
+    MY_OVERWRITTEN_ENV: "OVERWRITTEN workflow level"
+
 jobs:
     echo-data:
         runs-on: ubuntu-latest
+        env:
+            MY_JOB_ENV: "job level"
+            MY_OVERWRITTEN_ENV: "OVERWRITTEN job level"
         steps:
             - name: Display information
+              env:
+                  MY_STEP_ENV: "step level"
+                  MY_OVERWRITTEN_ENV: "OVERWRITTEN step level"
               run: |
                   echo "Event Name: ${{github.event_name}}"
                   echo "Ref: ${{github.ref}}"
@@ -26,3 +36,10 @@ jobs:
             - name: Retrieve Variable
               run: |
                   echo "Variable value: ${{vars.MY_VAR}}"
+
+            - name: Display Env
+              run: |
+                  echo "workflow env: $MY_WORKFLOW_ENV"
+                  echo "job env: $MY_JOB_ENV"
+                  echo  "step env: $MY_STEP_ENV"
+                  echo "overwritten env: ${{env.MY_OVERWRITTEN_ENV}}"
