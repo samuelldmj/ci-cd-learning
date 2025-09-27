@@ -32,3 +32,20 @@ jobs:
               run: |
                   echo "step one env: Step env var $STEP_VAR"
                   echo "step two env: ${{env.OVERWRITTEN}}"
+
+    echo2:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Print Variables
+              run: |
+                  echo "repo var: ${{vars.MY_VAR}} "
+
+    echo3:
+        runs-on: ubuntu-latest
+        environment: prod
+        steps:
+            - name: Print prod environment Variables
+              run: |
+                  echo "repo var: ${{vars.MY_OVERWRITTEN_ENV}}"
+                  echo "repo var: ${{vars.MY_VAR}}"
+                  echo "repo var: ${{vars.MY_VAR}}"
