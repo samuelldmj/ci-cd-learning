@@ -8,6 +8,9 @@ jobs:
     echo1:
         runs-on: ubuntu-latest
         steps:
+            - name: Sleep
+              run: sleep 20
+              
             - name: Failed Step
               run: exit 1
 
