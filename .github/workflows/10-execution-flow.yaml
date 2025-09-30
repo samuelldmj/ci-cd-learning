@@ -4,8 +4,8 @@ on:
         inputs:
             pass-unit-tests:
                 description: "Set to true to pass unit tests, false to fail them"
-                required: true
-                default: "true"
+                type: boolean
+                default: true
 
 jobs:
     lint-build:
