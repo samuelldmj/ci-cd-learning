@@ -18,11 +18,13 @@ jobs:
             build-status: ${{ steps.build.outputs.status }}
         steps:
             - name: Print Github Output
-              run: echo "GITHUB_OUTPUT is available at $GITHUB_OUTPUT"
+              run: echo "step-1---> GITHUB_OUTPUT is available at $GITHUB_OUTPUT"
 
             - name: Build
               id: build
               run: |
+                  #github output does not share env variable between steps
+                  echo "step2:---> $GITHUB_OUTPUT"
                   echo "status=${{ inputs.build-status  }}" >> $GITHUB_OUTPUT
 
     deploy:
