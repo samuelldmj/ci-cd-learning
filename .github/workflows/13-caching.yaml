@@ -37,12 +37,19 @@ jobs:
             - name: Calculate Cache Key
               id: cache-key
               run: |
-                  echo "CACHE_KEY=deps-node-modules-${{ hashFiles('13-caching/react-app/package-lock.json') }} >> $GITHUB_OUTPUT"
+                  echo "CACHE_KEY=deps-node-modules-${{ hashFiles('13-caching/react-app/package-lock.json') }}" >> $GITHUB_OUTPUT
 
             - name: Download cache
               uses: actions/cache@v3
               if: ${{ inputs.use-cache }}
               id: cache
+              with:
+                  path: 13-caching/react-app/node_modules
+                  key: ${{ steps.cache-key.outputs.CACHE_KEY }}
+
+            - name: Save cache
+              uses: actions/cache@v3
+              if: ${{ inputs.use-cache && steps.cache.outputs.cache-hit != 'true' }}
               with:
                   path: 13-caching/react-app/node_modules
                   key: ${{ steps.cache-key.outputs.CACHE_KEY }}
