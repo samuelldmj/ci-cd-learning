@@ -73,6 +73,17 @@ jobs:
               with:
                   path: 13-caching/react-app/node_modules
                   key: ${{ needs.install-deps.outputs.cache-key }}
+                  # The node_modules is now on the runner's disk, but not linked
+
+            # FIX: Install Dependencies conditionally (if cache missed)
+            # If the cache was found, this step will be skipped, but running
+            # 'npm ci' *does not* hurt here as it will exit quickly if node_modules exists.
+            # A better and simpler approach for subsequent jobs is often just to run 'npm ci'
+            # without the 'if' condition, as 'npm ci' is idempotent and ensures all links are set up.
+            - name: Install Dependencies (If Cache Missed or to setup links)
+              # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
+              # This guarantees the execution environment is properly configured.
+              run: npm ci
 
             - name: Testing
               run: npm run test
@@ -106,6 +117,11 @@ jobs:
               with:
                   path: 13-caching/react-app/node_modules
                   key: ${{ needs.install-deps.outputs.cache-key }}
+
+            - name: Install Dependencies (If Cache Missed or to setup links)
+              # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
+              # This guarantees the execution environment is properly configured.
+              run: npm ci
 
             - name: Building
               run: npm run build
