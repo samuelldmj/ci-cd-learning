@@ -1,0 +1,40 @@
+name: 13 - Using Caching in Workflows
+
+on:
+    workflow_dispatch:
+        inputs:
+            use-cache:
+                description: whether to execute cache step
+                type: boolean
+                default: true
+
+jobs:
+    build:
+        defaults:
+            run:
+                working-directory: 13-caching/react-app
+        runs-on: ubuntu-latest
+        #1 . checkout code
+        #2. install dependencies
+        #3. Linting, Formatting, unit testing, building
+        #4. Deploy to nonprod environment
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: "20.x"
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Testing
+              run: npm run test
+
+            - name: Building
+              run: npm run build
+
+            - name: Deploy to Non-prod
+              run: echo "Deploying to non-prod environment"
