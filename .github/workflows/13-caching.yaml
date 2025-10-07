@@ -57,10 +57,6 @@ jobs:
             run:
                 working-directory: 13-caching/react-app
         runs-on: ubuntu-latest
-        #1 . checkout code
-        #2. install dependencies
-        #3. Linting, Formatting, unit testing, building
-        #4. Deploy to nonprod environment
         steps:
             - name: Checkout Code
               uses: actions/checkout@v4
@@ -76,7 +72,7 @@ jobs:
               id: cache
               with:
                   path: 13-caching/react-app/node_modules
-                  key: ${{ needs.install-deps.outputs.cache-key }} }}
+                  key: ${{ needs.install-deps.outputs.cache-key }}
 
             - name: Testing
               run: npm run test
@@ -109,7 +105,7 @@ jobs:
               id: cache
               with:
                   path: 13-caching/react-app/node_modules
-                  key: ${{ needs.install-deps.outputs.cache-key }} }}
+                  key: ${{ needs.install-deps.outputs.cache-key }}
 
             - name: Building
               run: npm run build
