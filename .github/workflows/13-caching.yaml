@@ -1,134 +1,160 @@
+# Workflow demonstrating GitHub Actions caching to speed up CI/CD pipelines
+# Caching saves time by storing dependencies between workflow runs
 name: 13 - Using Caching in Workflows
 
+# Manual trigger with configurable inputs for testing different scenarios
 on:
-    workflow_dispatch:
-        inputs:
-            use-cache:
-                description: whether to execute cache step
-                type: boolean
-                default: true
-            node-version:
-                description: Node.js version to use
-                type: choice
-                options:
-                    - "18.x"
-                    - "20.x"
-                    - "21.x"
-                    - "22.x"
-                default: "20.x"
+  workflow_dispatch:
+    inputs:
+      use-cache:
+        description: whether to execute cache step
+        type: boolean
+        default: true
+      node-version:
+        description: Node.js version to use
+        type: choice
+        options:
+          - "18.x"
+          - "20.x"
+          - "21.x"
+          - "22.x"
+        default: "20.x"
 
 jobs:
-    install-deps:
-        outputs:
-            cache-key: ${{ steps.cache-key.outputs.CACHE_KEY }}
-        defaults:
-            run:
-                working-directory: 13-caching/react-app
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  # First job: Install dependencies and manage caching
+  install-deps:
+    # Output the cache key for other jobs to use
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.CACHE_KEY }}
+    # Set working directory for all steps in this job
+    defaults:
+      run:
+        working-directory: 13-caching/react-app
+    runs-on: ubuntu-latest
+    steps:
+      # Get the source code from repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: "${{ inputs.node-version }}"
+      # Install specified Node.js version
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ inputs.node-version }}"
 
-            - name: Calculate Cache Key
-              id: cache-key
-              run: |
-                  echo "CACHE_KEY=deps-node-modules-${{ hashFiles('13-caching/react-app/package-lock.json') }}" >> $GITHUB_OUTPUT
+      # Generate unique cache key based on package-lock.json hash
+      # If package-lock.json changes, cache key changes, invalidating old cache
+      - name: Generate Cache Key
+        id: cache-key
+        run: |
+          echo "CACHE_KEY=deps-node-modules-${{ hashFiles('13-caching/react-app/package-lock.json') }}" >> $GITHUB_OUTPUT
 
-            - name: Download cache
-              uses: actions/cache@v3
-              if: ${{ inputs.use-cache }}
-              id: cache
-              with:
-                  path: 13-caching/react-app/node_modules
-                  key: ${{ steps.cache-key.outputs.CACHE_KEY }}
+      # Try to restore node_modules from cache
+      # Only runs if use-cache input is true
+      - name: Download cache
+        uses: actions/cache@v3
+        if: ${{ inputs.use-cache }}
+        id: cache
+        with:
+          path: 13-caching/react-app/node_modules # Directory to cache
+          key: ${{ steps.cache-key.outputs.CACHE_KEY }} # Unique identifier
 
-            - name: Save cache
-              uses: actions/cache@v3
-              if: ${{ inputs.use-cache && steps.cache.outputs.cache-hit != 'true' }}
-              with:
-                  path: 13-caching/react-app/node_modules
-                  key: ${{ steps.cache-key.outputs.CACHE_KEY }}
+      # Save node_modules to cache (only if cache missed and caching enabled)
+      # This step actually saves the cache for future runs
+      - name: Save cache
+        uses: actions/cache@v3
+        if: ${{ inputs.use-cache && steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          path: 13-caching/react-app/node_modules
+          key: ${{ steps.cache-key.outputs.CACHE_KEY }}
 
-            - name: Install Dependencies
-              if: steps.cache.outputs.cache-hit != 'true'
-              run: npm ci
+      # Install dependencies only if cache was missed
+      # npm ci is faster and more reliable than npm install for CI
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
 
-    lint-test:
-        needs: install-deps
-        defaults:
-            run:
-                working-directory: 13-caching/react-app
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  # Second job: Run linting and testing (depends on install-deps)
+  lint-test:
+    needs: install-deps # Wait for dependency installation to complete
+    defaults:
+      run:
+        working-directory: 13-caching/react-app
+    runs-on: ubuntu-latest
+    steps:
+      # Fresh runner needs source code again
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: "${{ inputs.node-version }}"
+      # Setup Node.js environment matching the first job
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ inputs.node-version }}"
 
-            - name: Download cache
-              uses: actions/cache@v3
-              if: ${{ inputs.use-cache }}
-              id: cache
-              with:
-                  path: 13-caching/react-app/node_modules
-                  key: ${{ needs.install-deps.outputs.cache-key }}
-                  # The node_modules is now on the runner's disk, but not linked
+      # Restore cached node_modules using the same key from install-deps job
+      - name: Download cache
+        uses: actions/cache@v3
+        if: ${{ inputs.use-cache }}
+        id: cache
+        with:
+          path: 13-caching/react-app/node_modules
+          key: ${{ needs.install-deps.outputs.cache-key }} # Use key from previous job
+          # The node_modules is now on the runner's disk, but not linked
 
-            # FIX: Install Dependencies conditionally (if cache missed)
-            # If the cache was found, this step will be skipped, but running
-            # 'npm ci' *does not* hurt here as it will exit quickly if node_modules exists.
-            # A better and simpler approach for subsequent jobs is often just to run 'npm ci'
-            # without the 'if' condition, as 'npm ci' is idempotent and ensures all links are set up.
-            - name: Install Dependencies (If Cache Missed or to setup links)
-              # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
-              # This guarantees the execution environment is properly configured.
-              run: npm ci
+      # Ensure dependencies are properly installed and linked
+      # npm ci is idempotent - safe to run even if node_modules exists
+      - name: Install Dependencies (If Cache Missed or to setup links)
+        # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
+        # This guarantees the execution environment is properly configured.
+        run: npm ci
 
-            - name: Testing
-              run: npm run test
+      # Run the test suite
+      - name: Testing
+        run: npm run test
 
-            - name: Linting
-              run: echo "Linting the code..."
+      # Run code quality checks
+      - name: Linting
+        run: echo "Linting the code..."
 
-    build:
-        needs: install-deps
-        defaults:
-            run:
-                working-directory: 13-caching/react-app
-        runs-on: ubuntu-latest
-        #1 . checkout code
-        #2. install dependencies
-        #3. Linting, Formatting, unit testing, building
-        #4. Deploy to nonprod environment
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  # Third job: Build the application (runs parallel with lint-test)
+  build:
+    needs: install-deps # Wait for dependency installation to complete
+    defaults:
+      run:
+        working-directory: 13-caching/react-app
+    runs-on: ubuntu-latest
+    # Build process steps:
+    # 1. Checkout code
+    # 2. Install dependencies (from cache if available)
+    # 3. Build the application
+    # 4. Artifacts ready for deployment
+    steps:
+      # Get source code on fresh runner
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: "${{ inputs.node-version }}"
+      # Setup Node.js to match other jobs
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ inputs.node-version }}"
 
-            - name: Download cache
-              uses: actions/cache@v3
-              if: ${{ inputs.use-cache }}
-              id: cache
-              with:
-                  path: 13-caching/react-app/node_modules
-                  key: ${{ needs.install-deps.outputs.cache-key }}
+      # Restore node_modules from cache to avoid reinstalling
+      - name: Download cache
+        uses: actions/cache@v3
+        if: ${{ inputs.use-cache }}
+        id: cache
+        with:
+          path: 13-caching/react-app/node_modules
+          key: ${{ needs.install-deps.outputs.cache-key }}
 
-            - name: Install Dependencies (If Cache Missed or to setup links)
-              # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
-              # This guarantees the execution environment is properly configured.
-              run: npm ci
+      # Ensure all dependencies are available for build
+      - name: Install Dependencies (If Cache Missed or to setup links)
+        # For simplicity and correctness in subsequent jobs, we'll run npm ci without the if condition.
+        # This guarantees the execution environment is properly configured.
+        run: npm ci
 
-            - name: Building
-              run: npm run build
+      # Create production build of the React application
+      - name: Building
+        run: npm run build
