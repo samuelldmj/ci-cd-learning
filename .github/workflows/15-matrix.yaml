@@ -1,25 +1,83 @@
+# 15 - Working with matrices
+#
+# This workflow demonstrates GitHub Actions matrix strategies:
+# - How a matrix defines multiple job permutations (Cartesian product)
+# - How to run across versions/OS combinations efficiently
+# - How to use include/exclude to augment or prune combinations
+# - How to attach extra properties to specific matrix jobs
+# - Practical guidance on when to use matrices
+#
+# Key concepts:
+# 1) Matrix basics
+#    - A matrix is defined under `jobs.<job>.strategy.matrix`.
+#    - Each key inside `matrix` defines an axis (e.g., node-version, os).
+#    - GitHub Actions expands the Cartesian product of axes into multiple job runs.
+#      Example: node-version: [18, 20] and os: [ubuntu, windows] => 2 x 2 = 4 jobs.
+# 2) include
+#    - `include` lets you add specific configurations or add extra properties for matching ones.
+#    - If an `include` entry matches an existing combination (by specifying values of one or more axes),
+#      the fields in the `include` entry are merged into that job (e.g., adding `tag: experimental`).
+#    - If an `include` entry does NOT match any existing combination, it creates a NEW job configuration
+#      with only the specified keys. Any unspecified axes will be undefined for that added job.
+# 3) exclude
+#    - `exclude` removes combinations that match the specified keys from the final matrix.
+# 4) fail-fast
+#    - When true (default), if any matrix job fails, GitHub cancels the remaining in-progress jobs of the same matrix.
+#      Set `fail-fast: false` to allow all matrix jobs to run to completion, which is useful for broad compatibility checks.
+# 5) Referencing matrix values
+#    - Use `${{ matrix.<key> }}` to access axis or include-defined values in names, conditions, and steps.
+#    - Only available within the job that defines the matrix.
+# 6) When to use matrices
+#    - Cross-version and cross-platform testing (e.g., multiple Node versions, OS runners).
+#    - Parameterized tests where the same steps run against a set of inputs.
+#    - Backward compatibility and smoke tests across environments.
+#    - Avoids duplicating nearly identical job definitions.
+# 7) Practical limits and tips
+#    - Keep the total job count reasonable (matrix size x jobs). GitHub has concurrency limits per repo.
+#    - You can set `strategy.max-parallel` to control concurrency if needed.
+#    - Be careful with `include` entries that omit some axis keys—referencing missing keys (e.g., `matrix.size`) will be undefined.
+
 name: 15 - Working with  matrices
 
 on:
+    # Manual trigger for demonstration purposes
     workflow_dispatch:
 
 jobs:
+    # Job 1: Demonstrates a classic cross-OS and cross-Node matrix for backward compatibility.
     backwards-compatibility:
+        # Customize job name using matrix values so each run is easy to identify in the UI
         name: ${{ matrix.os}} - Node.js ${{ matrix.node-version }}
+
+        # Matrix provides the runner dynamically based on `matrix.os`
         runs-on: ${{ matrix.os }}
+
         strategy:
+            # Let all combinations complete even if one fails (useful for compatibility matrices)
             fail-fast: false
+
             matrix:
+                # Axis 1: Node versions to test
                 node-version: [18.x, 20.x, 21.x]
+
+                # Axis 2: Operating systems to test
                 os:
                     - ubuntu-latest
                     - windows-latest
+
+                # include can either:
+                # - Add extra properties to existing combinations (when the entry matches an existing combo), or
+                # - Create a new combo if no existing one matches (missing axis keys will be undefined in that job)
                 include:
+                    # Add an extra Node version only on ubuntu with an additional `tag` field.
+                    # Here `os` and `node-version` match a specific combination, and `tag` is an extra property
+                    # that can be used in step names or conditions if desired.
                     - os: ubuntu-latest
                       node-version: 16.x
                       tag: experimental
 
         steps:
+            # For brevity we don't checkout; we just show how to reference matrix values.
             - name: Setup node
               uses: actions/setup-node@v3
               with:
@@ -33,23 +91,46 @@ jobs:
               run: |
                   echo  "Uploading results for OS ${{matrix.os}} and Nodejs ${{matrix.node-version}}"
 
+    # Job 2: Demonstrates matrix include/exclude nuances and adding arbitrary properties.
     include-example:
+        # The name shows multiple matrix values; some may be undefined for include-only entries that omit keys.
         name: ${{ matrix.color}} - ${{ matrix.shape }} - ${{matrix.size}}
+
+        # Fixed runner for all permutations in this job
         runs-on: ubuntu-latest
+
         strategy:
             matrix:
+                # Three axes produce 2 x 2 x 2 = 8 base combinations
                 color: [red, green]
                 size: [small, large]
                 shape: [circle, square]
+
+                # include entries:
+                # - If the specified keys match an existing base combination, the job is augmented with new props (e.g., opacity).
+                # - If there's no match, a new job is added with only the provided keys (others will be undefined).
                 include:
+                    # Augment all base combos where color=red with opacity=1.0
+                    # Note: Because only `color` is specified, this merges with both shapes and sizes where color=red.
                     - color: red
                       opacity: 1.0
+
+                    # Augment all base combos where shape=circle with opacity=0.75
                     - shape: circle
                       opacity: 0.75
+
+                    # Add NEW combinations for shape=triangle with color=red.
+                    # Because `size` is not specified and no base combo has `shape: triangle`,
+                    # this creates new jobs where matrix.size will be undefined.
                     - color: red
                       shape: triangle
+
+                    # Add a completely NEW combination with only an `opacity` property.
+                    # Since no axis keys are provided, all regular axis values will be undefined in that job.
                     - opacity: 0.5
 
+                # exclude entries remove matching combinations from the final matrix after augmentation.
+                # These will only match jobs that have all the specified keys/values set.
                 exclude:
                     - color: green
                       shape: triangle
