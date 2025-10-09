@@ -25,7 +25,7 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
 
-            - name: fail if node version is 16.x and os is windows-latest
+            - name: fail if tag is experimental
               if: matrix.tag == 'experimental'
               run: exit 1
 
@@ -36,4 +36,23 @@ jobs:
 
             - name: upload results
               run: |
-                  echo " Uploading results for OS ${{matrix.os}} and Nodejs ${{matrix.node-version}}"
+                  echo  "Uploading results for OS ${{matrix.os}} and Nodejs ${{matrix.node-version}}"
+
+    include-example:
+        name: ${{ matrix.color}} - ${{ matrix.shape }} - ${{matrix.size}}
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                color: [red, green]
+                size: [small, large]
+                shape: [circle, square]
+                include:
+                    - color: red
+                      shape: triangle
+
+        steps:
+            - name: show values
+              run: |
+                  echo "Color is ${{matrix.color}}"
+                  echo "Size is ${{matrix.size}}"
+                  echo "Shape is ${{matrix.shape}}"
