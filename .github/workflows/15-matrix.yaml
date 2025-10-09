@@ -25,14 +25,9 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
 
-            - name: fail if tag is experimental
-              if: matrix.tag == 'experimental'
-              run: exit 1
-
             - name: perform some tests
               run: |
                   echo "Running tests on OS ${{matrix.os}} and Nodejs ${{matrix.node-version}}"
-                  sleep 10
 
             - name: upload results
               run: |
@@ -48,7 +43,21 @@ jobs:
                 shape: [circle, square]
                 include:
                     - color: red
+                      opacity: 1.0
+                    - shape: circle
+                      opacity: 0.75
+                    - color: red
                       shape: triangle
+                    - opacity: 0.5
+
+                exclude:
+                    - color: green
+                      shape: triangle
+                    - size: large
+                      shape: triangle
+                    - color: green
+                      size: large
+                      shape: square
 
         steps:
             - name: show values
@@ -56,3 +65,4 @@ jobs:
                   echo "Color is ${{matrix.color}}"
                   echo "Size is ${{matrix.size}}"
                   echo "Shape is ${{matrix.shape}}"
+                  echo "Opacity is ${{matrix.opacity}}"
