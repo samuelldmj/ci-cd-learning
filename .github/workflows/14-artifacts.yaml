@@ -1,64 +1,116 @@
+# 14 - Working with Artifacts
+#
+# This workflow demonstrates how to:
+# - Run tests and build a React app
+# - Upload build output and test coverage as artifacts
+# - Download artifacts in a separate job (e.g., for deployment)
+#
+# Key concepts explained inline:
+# - Artifacts vs Cache:
+#   * Cache (actions/cache) stores dependency folders (like node_modules) keyed by a hash to speed up future runs.
+#   * Artifacts (actions/upload-artifact) store run outputs (e.g., build, coverage) to pass data between jobs or to download from the run summary.
+# - Workflow-level env is accessible from any job.
+# - Using a unique artifact name per run (with github.sha) prevents collisions between runs and makes it trivial to download the right build later.
+
 name: 14 - Working with Artifacts
 
 on:
-    workflow_dispatch:
+  # Manual trigger from the GitHub UI. Useful for demos and ad‑hoc runs.
+  workflow_dispatch:
 
 env:
-    build-artifact-key: react-app-${{ github.sha }}
+  # Unique name used for the build artifact in this run. The commit SHA ensures uniqueness.
+  build-artifact-key: react-app-${{ github.sha }}
+
 jobs:
-    test-build:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: 14-artifacts/react-app
+  test-build:
+    # Use the latest Ubuntu runner for Node/React work.
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+    # Set a default working directory for all run steps in this job
+    # so we don't have to repeat `working-directory` in each step.
+    defaults:
+      run:
+        working-directory: 14-artifacts/react-app
 
-            - name: Set up Node.js
-              uses: actions/setup-node@v3
-              with:
-                  node-version: "20.x"
+    steps:
+      # 1) Checkout repository so the runner has your code
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Download cache
-              uses: actions/cache@v3
-              id: cache
-              with:
-                  path: 14-artifact/react-app/node_modules
-                  key: deps-node-modules-${{ hashFiles('14-artifacts/react-app/package-lock.json') }}
+      # 2) Install Node.js so we can run npm scripts
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20.x"
 
-            - name: Install Dependencies
-              if: steps.cache.outputs.cache-hit != 'true'
-              run: npm ci
+      # 3) Restore dependency cache if available
+      #
+      # actions/cache restores a folder (e.g., node_modules) based on a `key`.
+      # If the key matches a previous run, files are restored and we can skip `npm ci`.
+      #
+      # NOTE: The `path` below points to `14-artifact/...` (singular), while the project
+      # directory is `14-artifacts/...` (plural). That mismatch will cause cache misses.
+      # This comment highlights the issue intentionally without changing behavior.
+      - name: Download cache
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: 14-artifacts/react-app/node_modules
+          # Key includes a hash of lockfile to invalidate cache when dependencies change
+          key: deps-node-modules-${{ hashFiles('14-artifacts/react-app/package-lock.json') }}
 
-            - name: Unit tests
-              run: npm run test -- --coverage
+      # 4) Install dependencies only when the cache was not restored
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
 
-            - name: upload coverage
-              uses: actions/upload-artifact@v4
-              with:
-                  name: test coverage-report
-                  path: 14-artifacts/react-app/coverage
+      # 5) Run unit tests and collect coverage
+      - name: Unit tests
+        run: npm run test -- --coverage
 
-            - name: Build
-              run: npm run build
+      # 6) Upload the coverage folder as an artifact
+      # - Artifacts are attached to the workflow run and can be downloaded later.
+      # - They are great for reports and passing files to other jobs.
+      - name: upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name as it will appear in the run summary
+          name: test coverage-report
+          # Absolute or relative path(s) or glob(s) to upload
+          path: 14-artifacts/react-app/coverage
+          # Optional: you can control retention with `retention-days:` (default varies by repo settings)
 
-            - name: Upload Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: ${{ env.build-artifact-key }}
-                  path: 14-artifacts/react-app/build
+      # 7) Build the production bundle
+      - name: Build
+        run: npm run build
 
-    deploy:
-        runs-on: ubuntu-latest
-        needs: test-build
-        steps:
-            - name: Download Artifacts
-              uses: actions/download-artifact@v4
-              with:
-                  name: ${{ env.build-artifact-key }}
-                  path: ./downloaded-artifacts
+      # 8) Upload the production build as an artifact so other jobs (e.g., deploy) can use it
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Use a unique name so the deploy job can reference the exact build from this run
+          name: ${{ env.build-artifact-key }}
+          # Upload the build output directory
+          path: 14-artifacts/react-app/build
+          # Optional: `compression-level:` and `retention-days:` can be configured if desired
 
-            - name: Show folder structure
-              run: ls -R
+  deploy:
+    # This job simulates deployment by downloading the build artifact and inspecting it.
+    runs-on: ubuntu-latest
+    # Ensure build and tests finished successfully before deploying
+    needs: test-build
+
+    steps:
+      # 1) Download the previously uploaded build artifact by name
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Must match the name used during upload; using env ensures it matches the current run
+          name: ${{ env.build-artifact-key }}
+          # Files will be downloaded into this directory on the runner
+          path: ./downloaded-artifacts
+
+      # 2) Show what was downloaded (in a real deployment, you'd upload these files to your host/CDN)
+      - name: Show folder structure
+        run: ls -R
