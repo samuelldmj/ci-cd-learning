@@ -1,4 +1,6 @@
 name: 16 - Environment Variables
+run-name: 16 - Working with Environment Variables | env - ${{inputs.target-env}}
+
 # This workflow demonstrates using environment variables at various scopes:
 # - workflow
 # - job
