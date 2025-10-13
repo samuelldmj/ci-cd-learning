@@ -1,51 +1,83 @@
-name: 08 - Using env
-run-name: USING ENV
+# This workflow demonstrates how to define and reference environment variables at different scopes
+# (workflow, job, and step), as well as how to use repository and environment variables via the `vars` context.
+# It also shows the precedence rules when the same variable name exists at multiple levels.
+
+name: 08 - Using env  # Human-friendly workflow name shown in the Actions tab
+run-name: USING ENV   # Dynamic run name shown for each workflow run instance
 
 on:
-    workflow_dispatch:
+    workflow_dispatch:  # Enables manual triggering from the GitHub UI (Actions tab -> Run workflow)
 
+# Top-level (workflow-scope) environment variables. Available to all jobs and steps unless overridden.
 env:
-    WORKFLOW_VAR: "I am a workflow env var"
-    OVERWRITTEN: "I WIL BE OVERWRITTEN"
+    WORKFLOW_VAR: "I am a workflow env var"       # Can be read as $WORKFLOW_VAR in shell or ${{ env.WORKFLOW_VAR }} in expressions
+    OVERWRITTEN: "I WIL BE OVERWRITTEN"           # Intentionally set to demonstrate overriding at job/step levels
 
 jobs:
     echo:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-latest    # Runner OS for this job
+        # Job-scope environment variables. These apply to all steps within this job unless overridden at the step.
         env:
-            JOB_VAR: "I am a job env var"
-            OVERWRITTEN: "I have been overwritten at the job level"
+            JOB_VAR: "I am a job env var"                    # Job-level env var
+            OVERWRITTEN: "I have been overwritten at the job level"  # Overrides the workflow-scope value for this job
         steps:
-            - name: Print ENV variables
+            - name: Print ENV variables  # Step 1: demonstrate variable access and precedence
+              # Step-scope environment variables. Only available within this specific step.
               env:
-                  STEP_VAR: "I am a step var"
-                  step_var2: "I am another step env var"
+                  STEP_VAR: "I am a step var"                 # Step-level env var; highest precedence for this step
+                  step_var2: "I am another step env var"      # Case-sensitive shell variable name; available as $step_var2 in bash
               run: |
+                  # In run scripts, lines beginning with '#' are bash comments and do not execute
+
+                  # Access a step-level env via expression syntax (evaluated by GitHub at workflow processing time)
                   echo "Step env var: ${{env.STEP_VAR}}"
+
+                  # Access a step-level env directly via shell expansion (evaluated by the shell at runtime)
                   echo "Step env var 2: $step_var2"
+
+                  # Access a job-level env via expression syntax
                   echo "Job env var: ${{env.JOB_VAR}}"
+
+                  # Access a workflow-level env via direct shell expansion
                   echo "Workflow env var: $WORKFLOW_VAR"
+
+                  # Demonstrate precedence: OVERWRITTEN resolves to the closest scope (step > job > workflow)
                   echo "OVERWRITTEN: ${{env.OVERWRITTEN}}"
 
-            - name: Overwritten JOB variable
+            - name: Overwritten JOB variable  # Step 2: override a variable at the step scope
               env:
-                  OVERWRITTEN: "I have been overwritten at the stop level"
+                  OVERWRITTEN: "I have been overwritten at the stop level"  # Step-level override of OVERWRITTEN
               run: |
+                  # STEP_VAR is not defined in this step (it was only set in the previous step),
+                  # so shell-expanding $STEP_VAR will result in an empty string.
                   echo "step one env: Step env var $STEP_VAR"
+
+                  # This references the step-level OVERWRITTEN because step scope has the highest precedence.
                   echo "step two env: ${{env.OVERWRITTEN}}"
 
     echo2:
         runs-on: ubuntu-latest
         steps:
-            - name: Print Variables
+            - name: Print Variables  # Demonstrate repository-level variables via the `vars` context
               run: |
+                  # Repository variables are defined in: Settings -> Secrets and variables -> Actions -> Variables
+                  # Access them with the `vars` context. These are not shell env vars unless you export/map them.
                   echo "repo var: ${{vars.MY_VAR}} "
 
     echo3:
         runs-on: ubuntu-latest
+        # Binding this job to an environment named `prod` enables use of environment-scoped variables and protections
+        # (Settings -> Environments -> prod). Variables defined on the environment override repository variables.
         environment: prod
         steps:
-            - name: Print prod environment Variables
+            - name: Print prod environment Variables  # Demonstrate environment variable precedence over repo variables
               run: |
+                  # If an environment-scoped variable named MY_OVERWRITTEN_ENV exists for `prod`, it will appear here.
                   echo "repo var: ${{vars.MY_OVERWRITTEN_ENV}}"
+
+                  # If `MY_VAR` exists both at repo level and environment level, the environment value is used here
+                  # because the job is associated to the `prod` environment.
                   echo "repo var: ${{vars.MY_VAR}}"
+
+                  # Repeated to show determinism/consistency of value retrieval.
                   echo "repo var: ${{vars.MY_VAR}}"
