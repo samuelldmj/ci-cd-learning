@@ -22,22 +22,55 @@ run-name: 16 - Working with Environment Variables | env - ${{inputs.target-env}}
 #  - Workflow-level env is accessible from any job.
 #  - Job-level env overrides workflow-level env for that job.
 
+# on:
+#     # Manual trigger from the GitHub UI. Useful for demos and ad‑hoc runs.
+#     workflow_dispatch:
+#         inputs:
+#             target-env:
+#                 type: environment
+#                 description: "Select the target environment"
+#                 default: "staging"
+#
+# jobs:
+#     echo:
+#         runs-on: ubuntu-latest
+#         environment: ${{inputs.target-env}}
+#         env:
+#             my_env_value: ${{vars.MY_ENV_VALUE || 'default-value'}}
+#         steps:
+#             - name: Echo vars
+#               run: |
+#                   echo "Env variable: ${{env.my_env_value}}"
+
 on:
     # Manual trigger from the GitHub UI. Useful for demos and ad‑hoc runs.
     workflow_dispatch:
-        inputs:
-            target-env:
-                type: environment
-                description: "Select the target environment"
-                default: "staging"
 
 jobs:
-    echo:
+    deploy-staging:
         runs-on: ubuntu-latest
-        environment: ${{inputs.target-env}}
+        environment: staging
         env:
             my_env_value: ${{vars.MY_ENV_VALUE || 'default-value'}}
         steps:
             - name: Echo vars
               run: |
-                  echo "Env variable: ${{env.my_env_value}}"
+                  echo "Deploying to staging environment"
+
+    e2e-tests:
+        runs-on: ubuntu-latest
+        needs: deploy-staging
+        steps:
+            - name: Echo vars
+              run: |
+                  echo "Deploying to e2e environment"
+
+    deploy-prod:
+        runs-on: ubuntu-latest
+        environment: prod
+        env:
+            my_env_value: ${{vars.MY_ENV_VALUE || 'default-value'}}
+        steps:
+            - name: Echo vars
+              run: |
+                  echo "Deploying to production environment"
