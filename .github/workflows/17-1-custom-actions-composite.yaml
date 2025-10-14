@@ -1,27 +1,50 @@
 name: 17 - Custom Actions - Composite
+run-name: 17 - 1 - Custom Actions - Composite - ${{ github.event.inputs.target-env }}
+# This workflow demonstrates using a custom composite action to cache and install Node.js dependencies.
+# It also shows how to pass inputs to the action to control its behavior.
+# Key concepts explained inline:
+# - Custom Composite Action:
+#   * The action is defined in .github/actions/composite-cache-dependencies/action.yaml
+#   * It sets up Node.js, caches node_modules, and installs dependencies based on inputs
+# - Inputs to Action:
+#   * node-version: Specifies which Node.js version to use
+#   * working-directory: Directory where the action operates (e.g., where package.json is)
+#   * target-env: Controls whether dev dependencies are installed ("dev" or "prod")
+# - Workflow-level env is accessible from any job. Here, it sets the working directory for the React app.
+# -- The action is reused across multiple workflows to standardize dependency management.
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
+    inputs:
+      target-env:
+        description: '"Which environment to target.'
+        type: choice
+        options:
+          - "dev"
+          - "prod"
+        default: "dev"
+
 env:
-    working-directory: 17-custom-actions/react-app
+  working-directory: 17-custom-actions/react-app
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: ${{ env.working-directory }}
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.working-directory }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Setup Node.js and dependencies
-              uses: ./.github/actions/composite-cache-dependencies
-              with:
-                  node-version: "20.x"
-                  working-directory: ${{ env.working-directory }}
+      - name: Setup Node.js and dependencies
+        uses: ./.github/actions/composite-cache-dependencies
+        with:
+          node-version: "20.x"
+          working-directory: ${{ env.working-directory }}
+          target-env: ${{ github.event.inputs.target-env }}
 
-            - name: "Test"
-              run: npm run test
+      - name: "Test"
+        run: npm run test
 
-            - name: Build
-              run: npm run build
+      - name: Build
+        run: npm run build
