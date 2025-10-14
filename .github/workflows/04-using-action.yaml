@@ -1,28 +1,42 @@
+# Workflow: 04- using Actions
+# Purpose: Build and test the React app in 04-using-actions/react-app using a GitHub-hosted runner.
+# Notes:
+# - Uses defaults.run.working-directory to avoid repeating paths
+# - Demonstrates step-level working-directory override for a specific step
+# - Uses npm ci for clean, reproducible installs based on package-lock.json
+# - Triggered manually via workflow_dispatch for on-demand runs
+
 name: 04- using Actions
 
-on: workflow_dispatch
+on: workflow_dispatch  # Manual trigger to run on demand
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build:  # Single job to install dependencies and run tests
+    runs-on: ubuntu-latest  # GitHub-hosted Ubuntu runner
     defaults:
       run:
+        # Set the default working directory for all `run` steps below
+        # to the React app subfolder to keep commands concise.
         working-directory: 04-using-actions/react-app
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # Fetch repository content into the runner
 
       - name: Change Directory and List Contents
+        # Example of overriding the default working-directory for a single step.
+        # Useful when you need to operate outside the app folder (e.g., list the parent folder).
         working-directory: 04-using-actions
         run: ls
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20.x"
+          node-version: "20.x"  # Use Node 20 for builds/tests
 
       - name: Install Dependencies
+        # npm ci is preferred in CI for clean installs using package-lock.json
         run: npm ci
 
       - name: Run unit test
+        # Execute the project's unit tests; job fails on non-zero exit
         run: npm run test

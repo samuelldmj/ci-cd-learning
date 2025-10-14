@@ -16,11 +16,6 @@ run-name: 16 - Working with Environment Variables
 # - Workflow-level env is accessible from any job.
 # - Job-level env overrides workflow-level env for that job.
 # - Step-level env overrides job-level env for that step.
-# - Secrets can be passed as environment variables but should be handled carefully to avoid exposure in logs
-# - Using `env` at different levels to manage configuration and sensitive data.
-#  - Demonstrates best practices for handling secrets in GitHub Actions.
-#  - Workflow-level env is accessible from any job.
-#  - Job-level env overrides workflow-level env for that job.
 
 # on:
 #     # Manual trigger from the GitHub UI. Useful for demos and ad‑hoc runs.
