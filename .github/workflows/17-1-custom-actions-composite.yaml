@@ -14,15 +14,15 @@ run-name: 17 - 1 - Custom Actions - Composite - ${{ github.event.inputs.target-e
 # TRIGGER CONFIGURATION:
 # workflow_dispatch allows manual triggering from GitHub UI with custom inputs
 on:
-  workflow_dispatch:  # Manual trigger only
-    inputs:  # Define input parameters for manual runs
-      target-env:  # Input parameter name
-        description: 'Which environment to target.'  # Description shown in UI
-        type: choice  # Dropdown selection type
-        options:  # Available options in dropdown
-          - "dev"   # Development environment (includes devDependencies)
-          - "prod"  # Production environment (production dependencies only)
-        default: "dev"  # Default selection when triggering manually
+  workflow_dispatch: # Manual trigger only
+    inputs: # Define input parameters for manual runs
+      target-env: # Input parameter name
+        description: "Which environment to target." # Description shown in UI
+        type: choice # Dropdown selection type
+        options: # Available options in dropdown
+          - "dev" # Development environment (includes devDependencies)
+          - "prod" # Production environment (production dependencies only)
+        default: "dev" # Default selection when triggering manually
 
 # WORKFLOW-LEVEL ENVIRONMENT VARIABLES:
 # These are accessible across all jobs in the workflow
@@ -33,30 +33,30 @@ env:
 
 # JOB DEFINITIONS:
 jobs:
-  build:  # Job identifier
-    runs-on: ubuntu-latest  # Use latest Ubuntu runner (GitHub-hosted)
-    
+  build: # Job identifier
+    runs-on: ubuntu-latest # Use latest Ubuntu runner (GitHub-hosted)
+
     # JOB-LEVEL DEFAULTS:
     # Set default working directory for all 'run' steps in this job
     defaults:
       run:
-        working-directory: ${{ env.working-directory }}  # Reference workflow-level env var
-    
+        working-directory: ${{ env.working-directory }} # Reference workflow-level env var
+
     # JOB STEPS:
     steps:
       # STEP 1: Checkout the repository code
       - name: Checkout repository
-        uses: actions/checkout@v4  # Official GitHub action to download repo content
+        uses: actions/checkout@v4 # Official GitHub action to download repo content
         # This step downloads all repository files to the runner
 
       # STEP 2: Use custom composite action for Node.js setup and dependency management
       - name: Setup Node.js and dependencies
-        uses: ./.github/actions/composite-cache-dependencies  # Path to custom action
+        uses: ./.github/actions/composite-cache-dependencies # Path to custom action
         # The './' prefix indicates this is a local action in the same repository
-        with:  # Pass inputs to the custom action
-          node-version: "20.x"  # Node.js version to install (latest 20.x)
-          working-directory: ${{ env.working-directory }}  # Where to run npm commands
-          target-env: ${{ github.event.inputs.target-env }}  # Pass user's environment choice
+        with: # Pass inputs to the custom action
+          node-version: "20.x" # Node.js version to install (latest 20.x)
+          working-directory: ${{ env.working-directory }} # Where to run npm commands
+          target-env: ${{ github.event.inputs.target-env }} # Pass user's environment choice
         # This custom action will:
         # 1. Setup Node.js with the specified version
         # 2. Cache node_modules for faster subsequent runs
@@ -64,12 +64,12 @@ jobs:
 
       # STEP 3: Run tests
       - name: "Test"
-        run: npm run test  # Execute test script defined in package.json
+        run: npm run test # Execute test script defined in package.json
         # This runs in the working-directory set in job defaults
         # Dependencies are already installed by the previous step
 
       # STEP 4: Build the application
       - name: Build
-        run: npm run build  # Execute build script defined in package.json
+        run: npm run build # Execute build script defined in package.json
         # Creates production-ready build artifacts
         # Build process depends on the environment (dev vs prod dependencies)
