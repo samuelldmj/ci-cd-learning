@@ -12,7 +12,7 @@ inputs:
     required: false
     default: '.'
    target-env :
-     description : '"dev" or  "prod".  Controlls whether dev dependencies are installed.'
+     description : '"dev" or  "prod".  Controls whether dev dependencies are installed.'
      required: false
      default: "dev"
 
